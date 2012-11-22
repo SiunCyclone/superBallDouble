@@ -28,6 +28,7 @@ manager.run = function() {
 	function init() {
 		board.init("sBD");
 		shooter.init("sBD");
+		curBall.init("sBD");
 	}
 
 	function run() {
@@ -48,6 +49,7 @@ manager.main = function() {
 manager.update = function() {
 	board.update();
 	shooter.update();
+	curBall.update();
 }
 
 //==================================================
@@ -68,12 +70,11 @@ board.clear = function() {
 
 //==================================================
 
-
 //OverRide
 shooter.init = function(target) {
 	ObjectModel.prototype.init(target);
 	this.pos = { x: board.size.x/2, y: 600 };
-	this.posM = { x: board.size.x/2, y: 0 };
+	this.posM = { x: board.size.x/2, y: 600 };
 }
 
 shooter.run = function() {
@@ -82,7 +83,8 @@ shooter.run = function() {
 	});
 
 	$("#sBD").on("click", function(e) {
-		curBall.run();
+		curBall.init("sBD");
+		curBall.run(shooter.posM);
 	});
 }
 
@@ -105,40 +107,39 @@ shooter.draw = function() {
 
 //==================================================
 
-curBall.Firing = false;
-curBall.pos = new Object;
-
-curBall.run = function() {
-	this.Firing = true;
+curBall.init = function(target) {
+	ObjectModel.prototype.init(target);
+	this.pos = { x: board.size.x/2, y: 600, spd: 2 };
 }
 
-curBall.main = function() {
-	if (manager.Playing)
-		setTimeout(function() { curBall.main() } , FPS);
-	this.update();
+curBall.run = function(pos) {
+	this.Firing = true;
+	this.pos.dx = Math.cos( Math.atan2(( pos.y - this.pos.y ), pos.x - this.pos.x) ) * this.pos.spd;
+	this.pos.dy = Math.sin( Math.atan2(( pos.y - this.pos.y ), pos.x - this.pos.x) ) * this.pos.spd;
 }
 
 curBall.update = function() {
-	this.clear();
 	if ( this.canMove() )
 		this.move();
 	this.draw();
 }
 
-curBall.clear = function() {
-
-}
-
 curBall.canMove = function() {
-	if (!this.Firing) return;
+	if (!this.Firing) return false;
+	return true;
 }
 
 curBall.move = function() {
+	this.pos.x += this.pos.dx;
+	this.pos.y += this.pos.dy;
 
 }
 
 curBall.draw = function() {
-
+	$("#ball").text(curBall.pos.x + " " + curBall.pos.y);
+	this.context.beginPath();
+	this.context.arc(this.pos.x, this.pos.y, 10, 0, Math.PI*2, true);
+	this.context.fill();
 }
 
 //==================================================
@@ -148,9 +149,9 @@ $(function() {
 	manager.run();
 });
 
-//shooter表示
-//ボール表示
-//ボールクリックで発射
+//DONE shooter表示
+//DONE ボール表示
+//DONE ボールクリックで発射
 //壁で反発
 //積もってくリスト作成(デフォルトで既にくっついてる)
 //curBallを積もってくリストに追加
