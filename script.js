@@ -14,6 +14,7 @@ var K = new function() {
 	this.name = "sBD";
 	this.width = 12;
 	this.height = 24;
+	this.cnt = 0;
 
 	// return x < num
 	this.rand = function(num) { return Math.random() * num | 0; }
@@ -31,6 +32,7 @@ var shooter = new ObjectModel();
 var curBall = new ObjectModel();
 var nextBall = new ObjectModel();
 var piledBall = new ObjectModel();
+var fallBall = new ObjectModel();
 
 manager.run = function() {
 	$("#start").on("click", function() { 
@@ -70,6 +72,7 @@ manager.update = function() {
 	curBall.update();
 	nextBall.update();
 	piledBall.update();
+	++K.cnt;
 }
 
 //==================================================
@@ -120,7 +123,6 @@ shooter.move = function(e) {
 }
 
 shooter.draw = function() {
-	$("#coords").text(shooter.posM.x + " " + shooter.posM.y);
 	this.context.beginPath();
 	this.context.moveTo(this.pos.x, this.pos.y);
 	this.context.lineTo(this.posM.x, this.posM.y);
@@ -131,7 +133,7 @@ shooter.draw = function() {
 
 curBall.init = function(target) {
 	ObjectModel.prototype.init(target);
-	this.pos = { x: board.size.x/2, y: 600, spd: 18}; //spd:26
+	this.pos = { x: board.size.x/2, y: 600, spd: 18};
 }
 
 curBall.run = function(pos) {
@@ -204,7 +206,7 @@ nextBall.draw = function() {
 
 piledBall.init = function(target) {
 	ObjectModel.prototype.init(target);
-	this.spd = 1000; // 1sec
+	this.spd = 32; // 5sec
 	this.list = new Array;
 	var data;
 	for (var i=0; i<K.height; ++i) {
@@ -231,8 +233,18 @@ piledBall.update = function() {
 	this.draw();
 }
 
+//unfinished
 piledBall.move = function() {
-
+/*
+	if (K.cnt != 0 && K.cnt % this.spd == 0) {
+		for (var i=0; i<K.height; ++i) {
+			for (var o=0; o<K.width; ++o) {
+				if (this.list[i][o] == false) continue;
+				this.list[i][o].pos.y += 1;
+			}
+		}
+	}
+*/
 }
 
 piledBall.addRm = function() {
@@ -311,22 +323,22 @@ piledBall.addRm = function() {
 	function remove(curY, curX) {
 		var color = piledBall.list[curY][curX].color;
 		var dList = new Array;
-		makeD(dList, [[curY, curX]], color, 0);
+		makeDelList(dList, [[curY, curX]], color);
 		
 		if (dList.length < 3) return;
 		for each (var io in dList)
 			piledBall.list[ io[0] ][ io[1] ] = false;
 
-		function makeD(dList, neiL, color, stk) {
+		function makeDelList(dList, neiL, color) {
 			var cur = neiL.shift();
 			dList.push(cur);
 
 			var colorN;
 			for each ( var nei in neiAry(cur[0], cur[1]) ) {
 				//はじっこ以外。
-				if (nei[0]<=0 || nei[1]<=0 || nei[0]>=K.height || nei[1]>=K.width) return;
+				if (nei[0]<=0 || nei[1]<=0 || nei[0]>=K.height || nei[1]>=K.width)
+					return;
 
-				//空なら次のneiへ
 				if (piledBall.list[ nei[0] ][ nei[1] ] == false)
 					continue;
 
@@ -338,7 +350,7 @@ piledBall.addRm = function() {
 			
 			if (neiL.length == 0) return;
 
-			makeD(dList, neiL, color);
+			makeDelList(dList, neiL, color);
 		}
 
 		function overlap(list, nei) {
@@ -393,7 +405,49 @@ piledBall.addRm = function() {
 }
 
 piledBall.fall = function() {
+	var saveList = new Array;
 
+	makeSaveList(saveList);
+	sendFallBall(saveList);
+
+	function sendFallBall(saveList) {
+		var curPos;
+		for (var i=0; i<K.height; ++i) {
+			for (var o=0; o<K.width; ++o) {
+				if (piledBall.list[i][o] == false) continue;
+
+				curPos = [piledBall.list[i][o].pos.x, piledBall.list[i][o].pos.y];
+				if ( !contain(curPos, saveList) )
+					fallBall.add(curPos);
+			}
+		}
+	}
+	
+	function contain(elem, aryList) {
+		for each (var ary in aryList) {
+			for each (var pos in ary) {
+				if ( (elem[0] == x[0]) && (elem[1] == x[1]) )
+					return true;
+			}
+		}
+		return false;
+	}
+
+	function makeSaveList(saveList) {
+		var curX, curY;
+		for (var o=0; o<K.width; ++o) {
+			if (piledBall.list[0][o] == false)
+				continue;
+			curX = piledBall.list[0][o].pos.x;
+			curY = piledBall.list[0][o].pos.y;
+			spread(saveList, [[curX, curY]]);
+		//#TODO
+		//spread
+		}
+
+		function spread(saveList, neiL) {
+		}
+	}
 }
 
 piledBall.draw = function() {
@@ -415,6 +469,29 @@ piledBall.draw = function() {
 			}
 		}
 	}
+}
+
+//==================================================
+
+fallBall.init = function() {
+
+}
+
+fallBall.update = function() {
+	this.move();
+	this.draw();
+}
+
+fallBall.move = function() {
+
+}
+
+fallBall.add = function(pos) {
+
+}
+
+fallBall.draw = function() {
+
 }
 
 $(function() {
