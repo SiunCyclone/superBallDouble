@@ -131,7 +131,7 @@ shooter.draw = function() {
 
 curBall.init = function(target) {
 	ObjectModel.prototype.init(target);
-	this.pos = { x: board.size.x/2, y: 600, spd: 15}; //spd:26
+	this.pos = { x: board.size.x/2, y: 600, spd: 18}; //spd:26
 }
 
 curBall.run = function(pos) {
@@ -227,6 +227,7 @@ piledBall.init = function(target) {
 piledBall.update = function() {
 	this.move();
 	this.addRm();
+	this.fall();
 	this.draw();
 }
 
@@ -243,11 +244,15 @@ piledBall.addRm = function() {
 			for (var o=0; o<K.width; ++o) {
 				if ( piledBall.list[i][o] == false || outCircle(i, o) ) continue;
 
-				l = Math.abs( curBall.pos.y - (piledBall.list[i][o].pos.y * BALL.r*2 + BALL.r) );
-				if (l < BALL.r)
+				l = curBall.pos.y - (piledBall.list[i][o].pos.y * BALL.r*2 + BALL.r);
+				if ( Math.abs(l) < BALL.r )
 					addSide(i, o);
-				else 
-					addUnder(i, o);
+				else {
+					if (l < 0)
+						addUpper(i, o);
+					else
+						addUnder(i, o);
+				}
 				
 				curBall.Firing = false;
 				curBall.init(K.name);
@@ -256,18 +261,32 @@ piledBall.addRm = function() {
 		}
 	}
 
+	function addUpper(i, o) {
+		var t;
+		if (i%2==0) {
+			if ( 0 > (curBall.pos.x - ( piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r )) )
+				t = o-1;
+			else t = o;
+		} else {
+			if ( 0 > (curBall.pos.x - ( piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r*2 )) )
+				t = o-1;
+			else t = o+1;
+		}
+
+		piledBall.list[i-1][t] = { color: curBall.color, pos: { x: t, y: i-1 } };
+		remove(i, t);	
+	}
+
 	function addSide(i, o) {
 		var t;
 		if (i%2==0) {
 			if ( 0 > (curBall.pos.x - ( piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r )) )
 				t = o-1;
-			else
-				t = o+1;
+			else t = o+1;
 		} else {
 			if ( 0 > (curBall.pos.x - ( piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r*2 )) )
 				t = o-1;
-			else
-				t = o+1;
+			else t = o+1;
 		}
 
 		piledBall.list[i][t] = { color: curBall.color, pos: { x: t, y: i } };
@@ -279,13 +298,11 @@ piledBall.addRm = function() {
 		if (i%2==0) {
 			if ( 0 > (curBall.pos.x - ( piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r )) )
 				t = o-1;
-			else
-				t = o;
+			else t = o;
 		} else {
 			if ( 0 > (curBall.pos.x - ( piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r*2 )) )
 				t = o;
-			else
-				t = o+1;
+			else t = o+1;
 		}
 		piledBall.list[i+1][t] = { color: curBall.color, pos: { x: t, y: i+1 } };
 		remove(i+1, t);	
@@ -309,7 +326,7 @@ piledBall.addRm = function() {
 				//はじっこ以外。
 				if (nei[0]<=0 || nei[1]<=0 || nei[0]>=K.height || nei[1]>=K.width) return;
 
-				//空なら次の回りへ
+				//空なら次のneiへ
 				if (piledBall.list[ nei[0] ][ nei[1] ] == false)
 					continue;
 
@@ -373,6 +390,10 @@ piledBall.addRm = function() {
 			return false;
 		return true;
 	}
+}
+
+piledBall.fall = function() {
+
 }
 
 piledBall.draw = function() {
