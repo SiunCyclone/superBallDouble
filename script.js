@@ -271,7 +271,7 @@ piledBall.addRm = function() {
 		}
 
 		piledBall.list[i][t] = { color: curBall.color, pos: { x: t, y: i } };
-//		remove(i, t);	
+		remove(i, t);	
 	}
 
 	function addUnder(i, o) {
@@ -288,48 +288,70 @@ piledBall.addRm = function() {
 				t = o+1;
 		}
 		piledBall.list[i+1][t] = { color: curBall.color, pos: { x: t, y: i+1 } };
-//		remove(i+1, t);	
+		remove(i+1, t);	
 	}
 
 	function remove(curY, curX) {
 		var color = piledBall.list[curY][curX].color;
 		var dList = new Array;
-		makeD(dList, curY, curX, -1);
+		makeD(dList, [[curY, curX]], color, 0);
 		
-		if (dList == 0) return;
+		if (dList.length < 3) return;
 		for each (var io in dList)
 			piledBall.list[ io[0] ][ io[1] ] = false;
 
-		function makeD(dList, curY, curX, curN) {
+		function makeD(dList, neiL, color, stk) {
+			var cur = neiL.shift();
+			dList.push(cur);
+
 			var colorN;
-			++curN;
+			for each ( var nei in neiAry(cur[0], cur[1]) ) {
+				//はじっこ以外。
+				if (nei[0]<=0 || nei[1]<=0 || nei[0]>=K.height || nei[1]>=K.width) return;
 
-			if (curY==0 || curX==0 || curY==K.height || curX==K.width) return;
-			//はじっこ以外。
-			for each ( var io in ioNeighborAry(curY, curX) ) {
-				if (piledBall.list[ io[0] ][ io[1] ] == false)
+				//空なら次の回りへ
+				if (piledBall.list[ nei[0] ][ nei[1] ] == false)
 					continue;
-				colorN = piledBall.list[ io[0] ][ io[1] ].color;
 
-				if ( color == colorN && !overlap(dList, io) )
-					dList.push([curY, curX]);
+				colorN = piledBall.list[ nei[0] ][ nei[1] ].color;
+
+				if ( color == colorN && !overlap(dList, nei) && !overlap(neiL, nei) )
+					neiL.push(nei);
 			}
+			
+			if (neiL.length == 0) return;
 
-			if (dList.length <= curN) return;
-			makeD(dList, dList[curN][0], dList[curN][1]);
+			makeD(dList, neiL, color);
 		}
 
-		function overlap(dList, io) {
-			for each (var ary in dList)
-				if (ary == io) return true;
+		function overlap(list, nei) {
+			for each (var ary in list)
+				if ( compare(ary, nei) ) return true;
 			return false;
 		}
 
-		function ioNeighborAry(i, o) {
-			return [ [i-1, o-1], [i-1, o],
-				     [i, o-1], [i, o+1],
-				     [i+1, o-1], [i+1, o]
-				   ]
+		function compare(ary1, ary2) {
+			for (var i=0; i<ary1.length; ++i) {
+				if (ary1[i] != ary2[i])
+					return false	
+			}
+			return true;
+		}
+
+		function neiAry(i, o) {
+			var ary; 
+			if (i%2==0) {
+				ary = [ [i-1, o-1], [i-1, o],
+						[i, o-1], [i, o+1],
+						[i+1, o-1], [i+1, o]
+					  ]
+			} else {
+				ary = [ [i-1, o], [i-1, o+1],
+						[i, o-1], [i, o+1],
+						[i+1, o], [i+1, o+1]
+					  ]
+			}
+			return ary;
 		}
 	}
 
@@ -377,7 +399,4 @@ piledBall.draw = function() {
 $(function() {
 	manager.run();
 });
-
-//そろったら積もってくリスト消すシステム
-//全部消えたらクリア
 
