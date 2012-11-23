@@ -30,7 +30,7 @@ var board = new ObjectModel();
 var shooter = new ObjectModel();
 var curBall = new ObjectModel();
 var nextBall = new ObjectModel();
-var ballList = new ObjectModel();
+var piledBall = new ObjectModel();
 
 manager.run = function() {
 	$("#start").on("click", function() { 
@@ -44,8 +44,9 @@ manager.run = function() {
 	function init() {
 		board.init(K.name);
 		shooter.init(K.name);
+		curBall.init(K.name);
 		nextBall.init(K.name);
-		ballList.init(K.name);
+		piledBall.init(K.name);
 	}
 
 	function run() {
@@ -68,7 +69,7 @@ manager.update = function() {
 	shooter.update();
 	curBall.update();
 	nextBall.update();
-	ballList.update();
+	piledBall.update();
 }
 
 //==================================================
@@ -130,11 +131,11 @@ shooter.draw = function() {
 
 curBall.init = function(target) {
 	ObjectModel.prototype.init(target);
-	this.pos = { x: board.size.x/2, y: 600, spd: 26 }; //spd:26
-	this.color = nextBall.list[0].color;
+	this.pos = { x: board.size.x/2, y: 600, spd: 15}; //spd:26
 }
 
 curBall.run = function(pos) {
+	this.color = nextBall.list[0].color;
 	this.Firing = true;
 	this.pos.dx = Math.cos( Math.atan2(pos.y - this.pos.y,
 				                       pos.x - this.pos.x) ) * this.pos.spd;
@@ -201,7 +202,7 @@ nextBall.draw = function() {
 
 //==================================================
 
-ballList.init = function(target) {
+piledBall.init = function(target) {
 	ObjectModel.prototype.init(target);
 	this.spd = 1000; // 1sec
 	this.list = new Array;
@@ -223,21 +224,88 @@ ballList.init = function(target) {
 	}
 }
 
-ballList.update = function() {
+piledBall.update = function() {
 	this.move();
 	this.add();
 	this.draw();
 }
 
-ballList.move = function() {
+piledBall.move = function() {
 
 }
 
-ballList.add = function() {
-//	if (curBall.pos
+piledBall.add = function() {
+	var l;
+	for (var i=0; i<K.height; ++i) {
+		for (var o=0; o<K.width; ++o) {
+			if ( this.list[i][o] == false || outCircle(i, o) ) continue;
+
+			l = Math.abs( curBall.pos.y - (piledBall.list[i][o].pos.y * BALL.r*2 + BALL.r) );
+			if (l < BALL.r)
+				addSide(i, o);
+			else 
+				addUnder(i, o);
+
+			curBall.Firing = false;
+			curBall.init(K.name);
+			return;
+		}
+	}
+
+	function addSide(i, o) {
+		var t;
+		if (i%2==0) {
+			if ( 0 > (curBall.pos.x - ( piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r )) )
+				t = o-1;
+			else
+				t = o+1;
+		} else {
+			if ( 0 > (curBall.pos.x - ( piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r*2 )) )
+				t = o-1;
+			else
+				t = o+1;
+		}
+
+		piledBall.list[i][t] = { color: curBall.color, pos: { x: t, y: i } };
+	}
+
+	function addUnder(i, o) {
+		var t;
+		if (i%2==0) {
+			if ( 0 > (curBall.pos.x - ( piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r )) )
+				t = o-1;
+			else
+				t = o;
+		} else {
+			if ( 0 > (curBall.pos.x - ( piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r*2 )) )
+				t = o;
+			else
+				t = o+1;
+		}
+		piledBall.list[i+1][t] = { color: curBall.color, pos: { x: t, y: i+1 } };
+	}
+
+	function outCircle(i, o) {
+		var d;
+		if (i%2==0) {
+			d = ( curBall.pos.x - (piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r) ) *
+				( curBall.pos.x - (piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r) ) +
+				( curBall.pos.y - (piledBall.list[i][o].pos.y * BALL.r*2 + BALL.r) ) *
+				( curBall.pos.y - (piledBall.list[i][o].pos.y * BALL.r*2 + BALL.r) );
+		} else {
+			d = ( curBall.pos.x - (piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r*2) ) *
+				( curBall.pos.x - (piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r*2) ) +
+				( curBall.pos.y - (piledBall.list[i][o].pos.y * BALL.r*2 + BALL.r) ) *
+				( curBall.pos.y - (piledBall.list[i][o].pos.y * BALL.r*2 + BALL.r) );
+		}
+		var r = BALL.r*2 * BALL.r*2;
+		if (d < r)
+			return false;
+		return true;
+	}
 }
 
-ballList.draw = function() {
+piledBall.draw = function() {
 	for (var i=0; i<K.height; ++i) {
 		for (var o=0; o<K.width; ++o) {
 			if (this.list[i][o] != false) {
@@ -248,7 +316,7 @@ ballList.draw = function() {
 									 this.list[i][o].pos.y*BALL.r*2 + BALL.r,
 									 BALL.r, 0, Math.PI*2, true);
 				else
-					this.context.arc(BALL.r + this.list[i][o].pos.x*BALL.r*2 + BALL.r,
+					this.context.arc(this.list[i][o].pos.x*BALL.r*2 + BALL.r*2,
 									 this.list[i][o].pos.y*BALL.r*2 + BALL.r,
 									 BALL.r, 0, Math.PI*2, true);
 
