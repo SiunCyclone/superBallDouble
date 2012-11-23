@@ -44,8 +44,8 @@ manager.run = function() {
 	function init() {
 		board.init(K.name);
 		shooter.init(K.name);
-		curBall.init(K.name);
 		nextBall.init(K.name);
+		curBall.init(K.name);
 		piledBall.init(K.name);
 	}
 
@@ -105,8 +105,8 @@ shooter.run = function() {
 	$("#sBD").on("click", function(e) {
 		if (curBall.Firing) return;
 		curBall.init(K.name);
-		nextBall.rotate();
 		curBall.run(shooter.posM);
+		nextBall.rotate();
 	});
 }
 
@@ -226,7 +226,7 @@ piledBall.init = function(target) {
 
 piledBall.update = function() {
 	this.move();
-	this.add();
+	this.addRm();
 	this.draw();
 }
 
@@ -234,21 +234,25 @@ piledBall.move = function() {
 
 }
 
-piledBall.add = function() {
-	var l;
-	for (var i=0; i<K.height; ++i) {
-		for (var o=0; o<K.width; ++o) {
-			if ( this.list[i][o] == false || outCircle(i, o) ) continue;
+piledBall.addRm = function() {
+	main();
 
-			l = Math.abs( curBall.pos.y - (piledBall.list[i][o].pos.y * BALL.r*2 + BALL.r) );
-			if (l < BALL.r)
-				addSide(i, o);
-			else 
-				addUnder(i, o);
+	function main() {
+		var l;
+		for (var i=0; i<K.height; ++i) {
+			for (var o=0; o<K.width; ++o) {
+				if ( piledBall.list[i][o] == false || outCircle(i, o) ) continue;
 
-			curBall.Firing = false;
-			curBall.init(K.name);
-			return;
+				l = Math.abs( curBall.pos.y - (piledBall.list[i][o].pos.y * BALL.r*2 + BALL.r) );
+				if (l < BALL.r)
+					addSide(i, o);
+				else 
+					addUnder(i, o);
+				
+				curBall.Firing = false;
+				curBall.init(K.name);
+				return;
+			}
 		}
 	}
 
@@ -267,6 +271,7 @@ piledBall.add = function() {
 		}
 
 		piledBall.list[i][t] = { color: curBall.color, pos: { x: t, y: i } };
+//		remove(i, t);	
 	}
 
 	function addUnder(i, o) {
@@ -283,6 +288,49 @@ piledBall.add = function() {
 				t = o+1;
 		}
 		piledBall.list[i+1][t] = { color: curBall.color, pos: { x: t, y: i+1 } };
+//		remove(i+1, t);	
+	}
+
+	function remove(curY, curX) {
+		var color = piledBall.list[curY][curX].color;
+		var dList = new Array;
+		makeD(dList, curY, curX, -1);
+		
+		if (dList == 0) return;
+		for each (var io in dList)
+			piledBall.list[ io[0] ][ io[1] ] = false;
+
+		function makeD(dList, curY, curX, curN) {
+			var colorN;
+			++curN;
+
+			if (curY==0 || curX==0 || curY==K.height || curX==K.width) return;
+			//はじっこ以外。
+			for each ( var io in ioNeighborAry(curY, curX) ) {
+				if (piledBall.list[ io[0] ][ io[1] ] == false)
+					continue;
+				colorN = piledBall.list[ io[0] ][ io[1] ].color;
+
+				if ( color == colorN && !overlap(dList, io) )
+					dList.push([curY, curX]);
+			}
+
+			if (dList.length <= curN) return;
+			makeD(dList, dList[curN][0], dList[curN][1]);
+		}
+
+		function overlap(dList, io) {
+			for each (var ary in dList)
+				if (ary == io) return true;
+			return false;
+		}
+
+		function ioNeighborAry(i, o) {
+			return [ [i-1, o-1], [i-1, o],
+				     [i, o-1], [i, o+1],
+				     [i+1, o-1], [i+1, o]
+				   ]
+		}
 	}
 
 	function outCircle(i, o) {
@@ -330,7 +378,6 @@ $(function() {
 	manager.run();
 });
 
-//curBallを積もってくリストに追加
 //そろったら積もってくリスト消すシステム
 //全部消えたらクリア
 
