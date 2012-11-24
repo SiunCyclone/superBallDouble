@@ -15,7 +15,6 @@ var K = new function() {
 	this.width = 12;
 	this.height = 24;
 	this.cnt = 0;
-
 	// return x < num
 	this.rand = function(num) { return Math.random() * num | 0; }
 }
@@ -208,6 +207,7 @@ piledBall.init = function(target) {
 	ObjectModel.prototype.init(target);
 	this.spd = 32; // 5sec
 	this.list = new Array;
+	this.saveList = new Array;
 	var data;
 	for (var i=0; i<K.height; ++i) {
 		this.list.push(new Array);
@@ -215,12 +215,9 @@ piledBall.init = function(target) {
 			if (i<6)
 				data = { color: BALL.color[K.rand(BALL.color.length)],
 						 pos: { x: o, y: i } };
-			else
-				data = false;
-
+			else data = false;
 			if (o==K.width-1 && i%2!=0)
 				data = false;
-
 			this.list[i][o] = data;
 		}
 	}
@@ -229,7 +226,6 @@ piledBall.init = function(target) {
 piledBall.update = function() {
 	this.move();
 	this.addRm();
-	this.fall();
 	this.draw();
 }
 
@@ -254,8 +250,8 @@ piledBall.addRm = function() {
 		var l;
 		for (var i=0; i<K.height; ++i) {
 			for (var o=0; o<K.width; ++o) {
-				if ( piledBall.list[i][o] == false || outCircle(i, o) ) continue;
-
+				if ( piledBall.list[i][o] == false || outCircle(i, o) )
+					continue;
 				l = curBall.pos.y - (piledBall.list[i][o].pos.y * BALL.r*2 + BALL.r);
 				if ( Math.abs(l) < BALL.r )
 					addSide(i, o);
@@ -265,13 +261,15 @@ piledBall.addRm = function() {
 					else
 						addUnder(i, o);
 				}
-				
 				curBall.Firing = false;
 				curBall.init(K.name);
+				piledBall.fall();
 				return;
 			}
 		}
 	}
+
+	//TODO 上にボールがないとFieldを突き抜けてく
 
 	function addUpper(i, o) {
 		var t;
@@ -284,7 +282,6 @@ piledBall.addRm = function() {
 				t = o-1;
 			else t = o+1;
 		}
-
 		piledBall.list[i-1][t] = { color: curBall.color, pos: { x: t, y: i-1 } };
 		remove(i, t);	
 	}
@@ -300,7 +297,7 @@ piledBall.addRm = function() {
 				t = o-1;
 			else t = o+1;
 		}
-
+		//FIXME 奇数の右端に追加される
 		piledBall.list[i][t] = { color: curBall.color, pos: { x: t, y: i } };
 		remove(i, t);	
 	}
@@ -334,53 +331,17 @@ piledBall.addRm = function() {
 			dList.push(cur);
 
 			var colorN;
-			for each ( var nei in neiAry(cur[0], cur[1]) ) {
-				//はじっこ以外。
-				if (nei[0]<=0 || nei[1]<=0 || nei[0]>=K.height || nei[1]>=K.width)
-					return;
-
+			for each ( var nei in piledBall.neiAry(cur[0], cur[1]) ) {
+				if ( (nei[0] == K.height-1) && (nei[1] == K.width-1) )
+					continue;
 				if (piledBall.list[ nei[0] ][ nei[1] ] == false)
 					continue;
-
 				colorN = piledBall.list[ nei[0] ][ nei[1] ].color;
-
-				if ( color == colorN && !overlap(dList, nei) && !overlap(neiL, nei) )
+				if ( color == colorN && !piledBall.overlap(dList, nei) && !piledBall.overlap(neiL, nei) )
 					neiL.push(nei);
 			}
-			
 			if (neiL.length == 0) return;
-
 			makeDelList(dList, neiL, color);
-		}
-
-		function overlap(list, nei) {
-			for each (var ary in list)
-				if ( compare(ary, nei) ) return true;
-			return false;
-		}
-
-		function compare(ary1, ary2) {
-			for (var i=0; i<ary1.length; ++i) {
-				if (ary1[i] != ary2[i])
-					return false	
-			}
-			return true;
-		}
-
-		function neiAry(i, o) {
-			var ary; 
-			if (i%2==0) {
-				ary = [ [i-1, o-1], [i-1, o],
-						[i, o-1], [i, o+1],
-						[i+1, o-1], [i+1, o]
-					  ]
-			} else {
-				ary = [ [i-1, o], [i-1, o+1],
-						[i, o-1], [i, o+1],
-						[i+1, o], [i+1, o+1]
-					  ]
-			}
-			return ary;
 		}
 	}
 
@@ -404,18 +365,68 @@ piledBall.addRm = function() {
 	}
 }
 
-piledBall.fall = function() {
-	var saveList = new Array;
+piledBall.neiAry = function(y, x) {
+	if ( (y == 0) && (x == 0) ) //top left
+		return [ [y, x+1], [y+1, x] ];
+	if ( (y == 0) && (x == K.width-1) )//top right
+		return [ [y, x-1], [y+1, x-1] ];
+	if (y == 0) //top
+		return [ [y, x-1], [y, x+1], [y+1, x-1], [y+1, x] ];
+	if (y%2 == 0) {
+		if (x == 0) //left
+			return [ [y-1, x], [y, x+1], [y+1, x] ];	
+		if (x == K.width-1) //right
+			return [ [y-1, x-1], [y, x-1], [y+1, x-1] ];	
+		return [ [y-1, x-1], [y-1, x], [y, x-1], [y, x+1], [y+1, x-1], [y+1, x] ];
+	} else {
+		if (x == 0) //left
+			return [ [y-1, x], [y-1, x+1], [y, x+1], [y+1, x], [y+1, x+1] ];
+		if (x == K.width-1) //right
+			return [ [y-1, x-1], [y-1, x], [y, x-1], [y+1, x-1], [y+1, x] ];
+		return [ [y-1, x], [y-1, x+1], [y, x-1], [y, x+1], [y+1, x], [y+1, x+1] ];
+	}
+//一番下のチェック
+/*
+	if ( (i == K.height-1) && (x == 0) ) //under left
+		return [ [i-1, x], [i, x+1] ];
+	if ( (i == K.height-1) && (x == K.width-1) ) //under right
+		return [ [i-1, x-1], [i, x-1] ];
+	if (i == K.height-1) //under
+		return [ [i-1, x-1], [i-1, x], [i, x-1], [i, x+1] ];
+*/
+}
 
-	makeSaveList(saveList);
-	sendFallBall(saveList);
+piledBall.overlap = function(list, nei) {
+	for each (var ary in list)
+		if ( this.compare(ary, nei) ) return true;
+	return false;
+}
+
+piledBall.compare = function(ary1, ary2) {
+	for (var i=0; i<ary1.length; ++i) {
+		if (ary1[i] != ary2[i])
+			return false	
+	}
+	return true;
+}
+
+piledBall.fall = function() {
+	var cur;
+
+	for (var o=0; o<K.width; ++o) {
+		cur = piledBall.list[0][o];
+		if (cur == false)
+			continue;
+		makeSaveList(piledBall.saveList, [[cur.pos.y, cur.pos.x]]);
+	}
+	sendFallBall(piledBall.saveList);
 
 	function sendFallBall(saveList) {
 		var curPos;
 		for (var i=0; i<K.height; ++i) {
 			for (var o=0; o<K.width; ++o) {
-				if (piledBall.list[i][o] == false) continue;
-
+				if (piledBall.list[i][o] == false)
+					continue;
 				curPos = [piledBall.list[i][o].pos.x, piledBall.list[i][o].pos.y];
 				if ( !contain(curPos, saveList) )
 					fallBall.add(curPos);
@@ -425,7 +436,7 @@ piledBall.fall = function() {
 	
 	function contain(elem, aryList) {
 		for each (var ary in aryList) {
-			for each (var pos in ary) {
+			for each (var x in ary) {
 				if ( (elem[0] == x[0]) && (elem[1] == x[1]) )
 					return true;
 			}
@@ -433,20 +444,22 @@ piledBall.fall = function() {
 		return false;
 	}
 
-	function makeSaveList(saveList) {
-		var curX, curY;
-		for (var o=0; o<K.width; ++o) {
-			if (piledBall.list[0][o] == false)
-				continue;
-			curX = piledBall.list[0][o].pos.x;
-			curY = piledBall.list[0][o].pos.y;
-			spread(saveList, [[curX, curY]]);
-		//#TODO
-		//spread
-		}
+	function makeSaveList(saveList, neiL) {
+		var cur = neiL.shift();
+		saveList.push(cur);
 
-		function spread(saveList, neiL) {
+		for each ( var nei in piledBall.neiAry(cur[0], cur[1]) ) {
+			if (( (nei[0] == K.height-1) && (nei[1] == K.width-1) ) ||
+				(piledBall.list[ nei[0] ][ nei[1] ] == false) )
+				continue;
+			if ( (!piledBall.overlap( saveList, nei )) &&
+				 (!piledBall.overlap( neiL, nei )) ) {
+				console.log(piledBall.neiAry(cur[0], cur[1]));
+				neiL.push(nei);
+			}
 		}
+		if (neiL.length == 0) return;
+		makeSaveList(saveList, neiL);
 	}
 }
 
@@ -487,7 +500,7 @@ fallBall.move = function() {
 }
 
 fallBall.add = function(pos) {
-
+//	console.log(pos, "が落ちます");
 }
 
 fallBall.draw = function() {
