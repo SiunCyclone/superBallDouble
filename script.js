@@ -15,6 +15,7 @@ var K = new function() {
 	this.width = 12;
 	this.height = 24;
 	this.cnt = 0;
+	this.iniHeight = 6;
 	// return x < num
 	this.rand = function(num) { return Math.random() * num | 0; }
 }
@@ -45,9 +46,10 @@ manager.run = function() {
 	function init() {
 		board.init(K.name);
 		shooter.init(K.name);
-		nextBall.init(K.name);
 		curBall.init(K.name);
+		nextBall.init(K.name);
 		piledBall.init(K.name);
+		fallBall.init(K.name);
 	}
 
 	function run() {
@@ -71,6 +73,7 @@ manager.update = function() {
 	curBall.update();
 	nextBall.update();
 	piledBall.update();
+	fallBall.update();
 	++K.cnt;
 }
 
@@ -84,10 +87,16 @@ board.init = function(target) {
 
 board.update = function() {
 	this.clear();
+	this.draw();
 }
 
 board.clear = function() {
 	this.context.clearRect(0, 0, this.size.x, this.size.y);
+}
+
+board.draw = function() {
+	this.context.fillStyle = "#000000";
+	this.context.fillRect(0, 0, this.size.x, this.size.y);
 }
 
 //==================================================
@@ -106,7 +115,6 @@ shooter.run = function() {
 
 	$("#sBD").on("click", function(e) {
 		if (curBall.Firing) return;
-		curBall.init(K.name);
 		curBall.run(shooter.posM);
 		nextBall.rotate();
 	});
@@ -123,6 +131,7 @@ shooter.move = function(e) {
 
 shooter.draw = function() {
 	this.context.beginPath();
+	this.context.strokeStyle = "#ffffff";
 	this.context.moveTo(this.pos.x, this.pos.y);
 	this.context.lineTo(this.posM.x, this.posM.y);
 	this.context.stroke();
@@ -136,6 +145,7 @@ curBall.init = function(target) {
 }
 
 curBall.run = function(pos) {
+	this.pos = { x: board.size.x/2, y: 600, spd: 18};
 	this.color = nextBall.list[0].color;
 	this.Firing = true;
 	this.pos.dx = Math.cos( Math.atan2(pos.y - this.pos.y,
@@ -146,8 +156,8 @@ curBall.run = function(pos) {
 
 curBall.update = function() {
 	if (!this.Firing) return;
-	this.move();
 	this.reflect();
+	this.move();
 	this.draw();
 }
 
@@ -212,7 +222,7 @@ piledBall.init = function(target) {
 	for (var i=0; i<K.height; ++i) {
 		this.list.push(new Array);
 		for (var o=0; o<K.width; ++o) {
-			if (i<6)
+			if (i<K.iniHeight)
 				data = { color: BALL.color[K.rand(BALL.color.length)],
 						 pos: { x: o, y: i } };
 			else data = false;
@@ -250,6 +260,13 @@ piledBall.addRm = function() {
 		var l;
 		for (var i=0; i<K.height; ++i) {
 			for (var o=0; o<K.width; ++o) {
+				if  ( (curBall.pos.y - BALL.r) <= 0 ) {
+					addTop();	
+					curBall.Firing = false;
+					curBall.init(K.name);
+					piledBall.fall();
+					return;
+				}
 				if ( piledBall.list[i][o] == false || outCircle(i, o) )
 					continue;
 				l = curBall.pos.y - (piledBall.list[i][o].pos.y * BALL.r*2 + BALL.r);
@@ -269,7 +286,12 @@ piledBall.addRm = function() {
 		}
 	}
 
-	//TODO 上にボールがないとFieldを突き抜けてく
+	function addTop() {
+		var t;
+		t = Math.round( (curBall.pos.x - BALL.r) / (BALL.r*2) );
+		piledBall.list[0][t] = { color: curBall.color, pos: { x: t, y: 0 } };
+		remove(0, t);	
+	}
 
 	function addUpper(i, o) {
 		var t;
@@ -297,17 +319,22 @@ piledBall.addRm = function() {
 				t = o-1;
 			else t = o+1;
 		}
-		//FIXME 奇数の右端に追加される
 		piledBall.list[i][t] = { color: curBall.color, pos: { x: t, y: i } };
 		remove(i, t);	
 	}
 
 	function addUnder(i, o) {
 		var t;
-		if (i%2==0) {
+		//もうちょいきれいにかける
+		if (i%2 == 0) {
 			if ( 0 > (curBall.pos.x - ( piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r )) )
 				t = o-1;
 			else t = o;
+
+			if (o == 0)
+				t = o;
+			if (o == K.width-1)
+				t = o-1;
 		} else {
 			if ( 0 > (curBall.pos.x - ( piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r*2 )) )
 				t = o;
@@ -421,19 +448,30 @@ piledBall.fall = function() {
 			continue;
 		makeSaveList(piledBall.saveList, [[cur.pos.y, cur.pos.x]]);
 	}
-	//console.log(this.saveList);
-	//console.log(this.saveList.length);
 	sendFallBall(piledBall.saveList);
 
 	function sendFallBall(saveList) {
+		var data;
 		var curPos;
 		for (var i=0; i<K.height; ++i) {
 			for (var o=0; o<K.width; ++o) {
 				if (piledBall.list[i][o] == false)
 					continue;
-				curPos = [piledBall.list[i][o].pos.y, piledBall.list[i][o].pos.x];
-				if ( !contain(curPos, saveList) )
-					fallBall.add(curPos);
+				if (i%2 == 0)
+					curPos = {x: piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r,
+							  y: piledBall.list[i][o].pos.y * BALL.r*2 + BALL.r}
+				else
+					curPos = {x: piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r*2,
+							  y: piledBall.list[i][o].pos.y * BALL.r*2 + BALL.r}
+
+				data = { color: piledBall.list[i][o].color,
+						 pos: curPos,
+						 spd: 0 }
+				if ( !contain([piledBall.list[i][o].pos.y,
+							   piledBall.list[i][o].pos.x], saveList) ) {
+					fallBall.add(data);
+					piledBall.list[i][o] = false;
+				}
 			}
 		}
 	}
@@ -447,8 +485,6 @@ piledBall.fall = function() {
 	}
 
 	function makeSaveList(saveList, neiL) {
-		var t = $.extend(true, [], neiL);
-		//console.log(t);
 		var cur = neiL.shift();
 		if ( (!piledBall.overlap( saveList, cur )) &&
 			 (!piledBall.overlap( neiL, cur ))
@@ -460,17 +496,13 @@ piledBall.fall = function() {
 				(piledBall.list[ nei[0] ][ nei[1] ] == false)
 			   )
 				continue;
-			//console.log("piled",piledBall.neiAry(cur[0], cur[1]));
 			if ( (!piledBall.overlap( saveList, nei )) &&
 				 (!piledBall.overlap( neiL, nei ))
 			   ) {
-				//console.log("nei追加されました",nei);
 				neiL.push(nei);
 			}
 		}
 		if (neiL.length == 0) return;
-		t = $.extend(true, [], neiL);
-		//console.log("l ",t);
 		makeSaveList(saveList, neiL);
 	}
 }
@@ -498,25 +530,57 @@ piledBall.draw = function() {
 
 //==================================================
 
-fallBall.init = function() {
-
+fallBall.init = function(target) {
+	ObjectModel.prototype.init(target);
+	this.list = new Array;
 }
 
 fallBall.update = function() {
 	this.move();
+	this.remove();
 	this.draw();
 }
 
 fallBall.move = function() {
-
+	for (var i=0; i<this.list.length; ++i) {
+		this.list[i].pos.y += this.list[i].spd;
+		this.list[i].spd += 0.4;
+		if ( this.list[i].pos.y >= (board.size.y + BALL.r) )
+			this.list[i] = false;
+	}
 }
 
-fallBall.add = function(pos) {
-	console.log(pos, "が落ちます");
+fallBall.remove = function() {
+	while ( contain(false, this.list) ) {
+		for (var i=0; i<this.list.length; ++i) {
+			if (this.list[i] == false) {
+				this.list.splice(i, 1);
+				break;
+			}
+		}
+	}
+	
+	function contain(elem, ary) {
+		for each (var x in ary) {
+			if (elem == x)
+				return true;
+		}
+		return false;
+	}
+}
+
+
+fallBall.add = function(data) {
+	this.list.push(data);	
 }
 
 fallBall.draw = function() {
-
+	for each (var data in this.list) {
+		this.context.beginPath();
+		this.context.fillStyle = data.color;
+		this.context.arc(data.pos.x, data.pos.y, BALL.r, 0, Math.PI*2, true);
+		this.context.fill()
+	}
 }
 
 $(function() {
