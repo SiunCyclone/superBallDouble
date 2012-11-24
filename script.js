@@ -79,7 +79,7 @@ manager.update = function() {
 //OverRide
 board.init = function(target) {
 	ObjectModel.prototype.init(target);
-	this.size = { x: 500, y: 800 };
+	this.size = { x: 480, y: 800 };
 }
 
 board.update = function() {
@@ -157,7 +157,7 @@ curBall.move = function() {
 }
 
 curBall.reflect = function() {
-	if (this.pos.x <= BALL.r || this.pos.x >= board.size.x-BALL.r)
+	if ( this.pos.x <= BALL.r || this.pos.x >= (board.size.x-BALL.r) )
 		this.pos.dx = -this.pos.dx;
 	if (this.pos.y >= board.size.y-BALL.r)
 		this.pos.dy = -this.pos.dy;
@@ -413,6 +413,7 @@ piledBall.compare = function(ary1, ary2) {
 }
 
 piledBall.fall = function() {
+	this.saveList.length = 0;
 	var cur;
 	for (var o=0; o<K.width; ++o) {
 		cur = piledBall.list[0][o];
@@ -430,7 +431,7 @@ piledBall.fall = function() {
 			for (var o=0; o<K.width; ++o) {
 				if (piledBall.list[i][o] == false)
 					continue;
-				curPos = [piledBall.list[i][o].pos.x, piledBall.list[i][o].pos.y];
+				curPos = [piledBall.list[i][o].pos.y, piledBall.list[i][o].pos.x];
 				if ( !contain(curPos, saveList) )
 					fallBall.add(curPos);
 			}
@@ -439,10 +440,8 @@ piledBall.fall = function() {
 	
 	function contain(elem, aryList) {
 		for each (var ary in aryList) {
-			for each (var x in ary) {
-				if ( (elem[0] == x[0]) && (elem[1] == x[1]) )
-					return true;
-			}
+			if ( (elem[0] == ary[0]) && (elem[1] == ary[1]) )
+				return true;
 		}
 		return false;
 	}
