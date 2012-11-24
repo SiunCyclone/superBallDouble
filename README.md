@@ -5,6 +5,11 @@ superBallDouble
 -------
 Firefoxでしか動きません。
 
+ゲーム画面
+-------
+
+![ゲーム画面](http://i.imgur.com/lhTaV.png "ゲーム画面")
+
 遊び方
 -------
 クリックで弾発射です。

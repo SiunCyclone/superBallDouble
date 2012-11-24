@@ -40,8 +40,8 @@ manager.run = function() {
 		init();
 		run();
 	});
-	$("#stop").on("click", function() { stop(); });
-	$("#resume").on("click", function() { run(); });	
+	$("#stop").on("click", stop);
+	$("#resume").on("click", run);	
 
 	function init() {
 		board.init(K.name);
@@ -295,22 +295,22 @@ piledBall.addRm = function() {
 
 	function addUpper(i, o) {
 		var t;
-		if (i%2==0) {
+		if (i%2 == 0) {
 			if ( 0 > (curBall.pos.x - ( piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r )) )
 				t = o-1;
 			else t = o;
 		} else {
 			if ( 0 > (curBall.pos.x - ( piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r*2 )) )
-				t = o-1;
+				t = o;
 			else t = o+1;
 		}
 		piledBall.list[i-1][t] = { color: curBall.color, pos: { x: t, y: i-1 } };
-		remove(i, t);	
+		remove(i-1, t);	
 	}
 
 	function addSide(i, o) {
 		var t;
-		if (i%2==0) {
+		if (i%2 == 0) {
 			if ( 0 > (curBall.pos.x - ( piledBall.list[i][o].pos.x * BALL.r*2 + BALL.r )) )
 				t = o-1;
 			else t = o+1;
@@ -568,7 +568,6 @@ fallBall.remove = function() {
 		return false;
 	}
 }
-
 
 fallBall.add = function(data) {
 	this.list.push(data);	
