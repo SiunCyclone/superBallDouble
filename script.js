@@ -16,13 +16,11 @@ var K = new function() {
 	this.height = 24;
 	this.cnt = 0;
 	this.iniHeight = 6;
-	// return x < num
-	this.rand = function(num) { return Math.random() * num | 0; }
+	this.rand = function(num) { return Math.random() * num | 0; } // return x < num
 }
 
 var BALL = new function() {
-	this.color = ["#e87812", "#ffd000", "#ff0000",
-				  "#dc00e0", "#00ff00", "#0000eb", "#02e4e6"];
+	this.color = ["#e87812", "#ffd000", "#ff0000", "#dc00e0", "#00ff00", "#0000eb", "#02e4e6"];
 	this.r = 20;
 }
 
@@ -350,8 +348,9 @@ piledBall.addRm = function() {
 		makeDelList(dList, [[curY, curX]], color);
 		
 		if (dList.length < 3) return;
-		for each (var io in dList)
+		_.each(dList, function(io) {
 			piledBall.list[ io[0] ][ io[1] ] = false;
+    });
 
 		function makeDelList(dList, neiL, color) {
 			var cur = neiL.shift();
@@ -360,15 +359,13 @@ piledBall.addRm = function() {
 			   )
 				dList.push(cur);
 			var colorN;
-			for each ( var nei in piledBall.neiAry(cur[0], cur[1]) ) {
-				if (nei[0] == K.height-1)
-					continue;
-				if (piledBall.list[ nei[0] ][ nei[1] ] == false)
-					continue;
-				colorN = piledBall.list[ nei[0] ][ nei[1] ].color;
-				if ( color == colorN && !piledBall.overlap(dList, nei) && !piledBall.overlap(neiL, nei) )
-					neiL.push(nei);
-			}
+			_.each(piledBall.neiAry(cur[0], cur[1]), function(nei) {
+				if ((nei[0] != K.height-1) && (piledBall.list[ nei[0] ][ nei[1] ] != false)) {
+          colorN = piledBall.list[ nei[0] ][ nei[1] ].color;
+          if ( color == colorN && !piledBall.overlap(dList, nei) && !piledBall.overlap(neiL, nei) )
+            neiL.push(nei);
+        }
+			});
 			if (neiL.length == 0) return;
 			makeDelList(dList, neiL, color);
 		}
@@ -426,9 +423,12 @@ piledBall.neiAry = function(y, x) {
 }
 
 piledBall.overlap = function(list, nei) {
-	for each (var ary in list)
-		if ( this.compare(ary, nei) ) return true;
-	return false;
+  var compare = this.compare
+    var result = false;
+	_.each(list, function(ary) {
+		if ( compare(ary, nei) ) result = true;
+  });
+	return result;
 }
 
 piledBall.compare = function(ary1, ary2) {
@@ -477,31 +477,25 @@ piledBall.fall = function() {
 	}
 	
 	function contain(elem, aryList) {
-		for each (var ary in aryList) {
+    var result = false;
+		_.each(aryList, function(ary) {
 			if ( (elem[0] == ary[0]) && (elem[1] == ary[1]) )
-				return true;
-		}
-		return false;
+				result = true;
+		});
+		return result;
 	}
 
 	function makeSaveList(saveList, neiL) {
 		var cur = neiL.shift();
-		if ( (!piledBall.overlap( saveList, cur )) &&
-			 (!piledBall.overlap( neiL, cur ))
-		   )
+		if ( (!piledBall.overlap( saveList, cur )) && (!piledBall.overlap( neiL, cur )))
 			saveList.push(cur);
 
-		for each ( var nei in piledBall.neiAry(cur[0], cur[1]) ) {
-			if ((nei[0] == K.height-1) ||
-				(piledBall.list[ nei[0] ][ nei[1] ] == false)
-			   )
-				continue;
-			if ( (!piledBall.overlap( saveList, nei )) &&
-				 (!piledBall.overlap( neiL, nei ))
-			   ) {
-				neiL.push(nei);
+		_.each(piledBall.neiAry(cur[0], cur[1]), function(nei) {
+			if ((nei[0] != K.height-1) && (piledBall.list[ nei[0] ][ nei[1] ] != false)) {
+        if ( (!piledBall.overlap( saveList, nei )) && (!piledBall.overlap( neiL, nei )))
+          neiL.push(nei);
 			}
-		}
+		});
 		if (neiL.length == 0) return;
 		makeSaveList(saveList, neiL);
 	}
@@ -561,11 +555,12 @@ fallBall.remove = function() {
 	}
 	
 	function contain(elem, ary) {
-		for each (var x in ary) {
+    var result = false;
+		_.each(ary, function(x) {
 			if (elem == x)
-				return true;
-		}
-		return false;
+				result = true;
+		});
+		return result;
 	}
 }
 
@@ -574,12 +569,13 @@ fallBall.add = function(data) {
 }
 
 fallBall.draw = function() {
-	for each (var data in this.list) {
-		this.context.beginPath();
-		this.context.fillStyle = data.color;
-		this.context.arc(data.pos.x, data.pos.y, BALL.r, 0, Math.PI*2, true);
-		this.context.fill()
-	}
+  var context = this.context;
+	_.each(this.list, function(data) {
+		context.beginPath();
+		context.fillStyle = data.color;
+		context.arc(data.pos.x, data.pos.y, BALL.r, 0, Math.PI*2, true);
+		context.fill()
+	});
 }
 
 $(function() {
